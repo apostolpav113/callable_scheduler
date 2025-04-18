@@ -1,0 +1,15 @@
+name: Tests
+
+on: [push]
+
+jobs:
+  build-and-run-tests:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Ceckout repository code
+      uses: actions/checkout@v4
+    - run: mkdir cmake-build-release
+    - run: cd ./cmake-build-release/ && cmake -DCMAKE_BUILD_TYPE=Release .. && make
+    - run: cd ./cmake-build-release/ && ctest
