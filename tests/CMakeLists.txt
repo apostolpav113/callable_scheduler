@@ -21,4 +21,15 @@ add_executable(tests
 )
 target_link_libraries(tests gtest_main)
 
-add_test(NAME all-tests COMMAND tests)
+add_executable(thread_pool_tests
+        thread_pool_tests.cpp
+)
+target_link_libraries(thread_pool_tests gtest_main)
+
+add_executable(callable_scheduler_tests
+        callable_scheduler_tests.cpp
+)
+target_link_libraries(callable_scheduler_tests gtest_main)
+
+add_test(NAME thread_pool COMMAND thread_pool_tests)
+add_test(NAME callable_scheduler COMMAND callable_scheduler_tests)
