@@ -14,8 +14,6 @@ set(BUILD_GTEST ON CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(googletest)
 
-enable_testing()
-
 # Now simply link against gtest or gtest_main as needed. Eg
 add_executable(tests
         thread_pool_tests.cpp
@@ -23,4 +21,4 @@ add_executable(tests
 )
 target_link_libraries(tests gtest_main)
 
-add_test(NAME tests COMMAND tests)
+add_test(NAME all-tests COMMAND tests)
