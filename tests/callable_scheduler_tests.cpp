@@ -108,15 +108,19 @@ TEST(CallableSchedulerTest, ShouldRunEarlierTaskFirst) {
   std::latch latch{3};
 
   auto Task = [&] (std::string_view substr_to_add) {
-      s += substr_to_add;
+      {
+        std::lock_guard lock{mtx};
+        s += substr_to_add;
+      }
       latch.count_down();
   };
 
   multi_threading::CallableScheduler scheduler;
   using namespace std::chrono_literals;
-  scheduler.Schedule(Task, std::chrono::system_clock::now() + 2s, std::string{"-one-"});
-  scheduler.Schedule(Task, std::chrono::system_clock::now() + 3s, std::string{"-two-"});
-  scheduler.Schedule(Task, std::chrono::system_clock::now(), std::string{"-three-"});
+  const auto now = std::chrono::system_clock::now();
+  scheduler.Schedule(Task, now + 2s, std::string{"-one-"});
+  scheduler.Schedule(Task, now + 3s, std::string{"-two-"});
+  scheduler.Schedule(Task, now, std::string{"-three-"});
 
 
   latch.wait();
