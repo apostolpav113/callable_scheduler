@@ -10,6 +10,7 @@
 
 #include "thread_pool.h"
 
+
 namespace multi_threading {
 
 using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
@@ -72,28 +73,32 @@ class CallableScheduler {
   };
 
   void ExecutorFunc(std::stop_token stop_token) {
+    QueueItem current_item;
+    bool wait_result = false;
     while (!stop_token.stop_requested()) {
-      QueueItem current_item;
       {
         std::unique_lock lock{mtx_};
+        if (current_item.second) {
+          queue_.emplace(std::move(current_item));
+        }
         cond_var_.wait(lock, stop_token, [&]() { return !queue_.empty(); });
         if (stop_token.stop_requested()) break;
         current_item = std::move(queue_.top());
         queue_.pop();
-      }
-      auto& [when, enqueue_in_threadpool_func] = current_item;
-      bool wait_result = false;
-      {
-        std::unique_lock lock{mtx_};
+        const auto when = current_item.first;
         wait_result = cond_var_.wait_until(lock, stop_token, when, [&](){
             const auto now = std::chrono::system_clock::now();
-            return now >= when;
+            return now >= when && (queue_.empty() || queue_.top().first >= when);
         });
       }
 
       if (wait_result) {
+        const auto enqueue_in_threadpool_func = current_item.second;
         const bool enqueued = enqueue_in_threadpool_func();
-        if (enqueued) continue;
+        if (enqueued) {
+          current_item = {};
+          continue;
+        }
         // otherwise, all threads are busy, and we should put the task back in the queue
         // Note: this way we can run into a spinning loop (i.e. putting the same task into the queue, and immediately
         //       taking it out of the queue on the next step)
@@ -101,9 +106,6 @@ class CallableScheduler {
         //       the cond_var_ like this:
         //       cond_var_.wait(lock, stop_token, [&](){ return !queue_.empty() && thread_pool_.has_free_threads(); });
       }
-
-      std::lock_guard lock{mtx_};
-      queue_.emplace(std::move(current_item));
     }
   }
 
